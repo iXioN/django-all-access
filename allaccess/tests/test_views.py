@@ -3,34 +3,25 @@ from __future__ import unicode_literals
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
-
-from mock import patch, Mock
+from django.test import override_settings, RequestFactory
 
 from .base import AllAccessTestCase, AccountAccess, get_user_model, skipIfCustomUser
-from ..compat import urlparse, parse_qs
+from ..compat import urlparse, parse_qs, patch, Mock
+from ..views import OAuthRedirect, OAuthCallback
 
 
+@override_settings(ROOT_URLCONF='allaccess.tests.urls', LOGIN_URL='/login/', LOGIN_REDIRECT_URL='/')
 class BaseViewTestCase(AllAccessTestCase):
     "Common view test functionality."
 
-    urls = 'allaccess.tests.urls'
     url_name = None
 
     def setUp(self):
         self.consumer_key = self.get_random_string()
         self.consumer_secret = self.get_random_string()
-        self.provider = self.create_provider(consumer_key=self.consumer_key, consumer_secret=self.consumer_secret)
+        self.provider = self.create_provider(
+            consumer_key=self.consumer_key, consumer_secret=self.consumer_secret)
         self.url = reverse(self.url_name, kwargs={'provider': self.provider.name})
-        # Replace exsiting settings
-        self.LOGIN_URL = settings.LOGIN_URL
-        self.LOGIN_REDIRECT_URL = settings.LOGIN_REDIRECT_URL
-        settings.LOGIN_URL = '/login/'
-        settings.LOGIN_REDIRECT_URL = '/'
-
-    def tearDown(self):
-        # Restore settings
-        settings.LOGIN_URL = self.LOGIN_URL
-        settings.LOGIN_REDIRECT_URL = self.LOGIN_REDIRECT_URL
 
 
 class OAuthRedirectTestCase(BaseViewTestCase):
@@ -102,6 +93,20 @@ class OAuthRedirectTestCase(BaseViewTestCase):
         self.provider.save()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 404)
+
+    def test_redirect_params(self):
+        "Set additional redirect parameters in as_view."
+        view = OAuthRedirect.as_view(params={'scope': 'email'})
+        self.provider.request_token_url = ''
+        self.provider.save()
+        request = RequestFactory().get(self.url)
+        request.session = {}
+        response = view(request, provider=self.provider.name)
+        url = response['Location']
+        scheme, netloc, path, params, query, fragment = urlparse(url)
+        self.assertEqual('%s://%s%s' % (scheme, netloc, path), self.provider.authorization_url)
+        query = parse_qs(query)
+        self.assertEqual(query['scope'][0], 'email')
 
 
 class OAuthCallbackTestCase(BaseViewTestCase):
@@ -209,3 +214,19 @@ class OAuthCallbackTestCase(BaseViewTestCase):
     def test_authentication_redirect(self):
         "Post-authentication redirect to LOGIN_REDIRECT_URL."
         self._test_authentication_redirect()
+
+    def test_customized_provider_id(self):
+        "Change how to find the provider id in as_view."
+        view = OAuthCallback(provider_id='account_id')
+        result = view.get_user_id(self.provider, {'account_id': '123'})
+        self.assertEqual(result, '123')
+        result = view.get_user_id(self.provider, {'id': '123'})
+        self.assertIsNone(result)
+
+    def test_nested_provider_id(self):
+        "Allow easy access to nested provider ids."
+        view = OAuthCallback(provider_id='user.account_id')
+        result = view.get_user_id(self.provider, {'user': {'account_id': '123'}})
+        self.assertEqual(result, '123')
+        result = view.get_user_id(self.provider, {'id': '123'})
+        self.assertIsNone(result)

@@ -2,7 +2,7 @@ Customizing Redirects and Callbacks
 ====================================
 
 django-all-access provides default views/urls for authentication. These are built
-from Django's `class based views <https://docs.djangoproject.com/en/1.4/topics/class-based-views/>`_
+from Django's `class based views <https://docs.djangoproject.com/en/1.8/topics/class-based-views/>`_
 making them easy to extend or override the default behavior in your project.
 
 
@@ -11,7 +11,7 @@ OAuthRedirect View
 
 The initial step for authenticating with any OAuth provider is redirecting the
 user to the provider's website. The :py:class:`OAuthRedirect` view extends from the
-`RedirectView <https://docs.djangoproject.com/en/1.4/ref/class-based-views/#redirectview>`_
+`RedirectView <https://docs.djangoproject.com/en/1.8/ref/class-based-views/#redirectview>`_
 By default it is mapped to the ``allaccess-login`` URL name. This view takes one
 keyword argument from the URL pattern ``provider`` which corresponds to the ``Provider.name``
 for an enabled provider. If no enabled provider is found for the name, this view
@@ -19,16 +19,19 @@ will return a 404.
 
 .. class:: OAuthRedirect()
 
-    .. versionadded:: 0.5
     .. attribute:: client_class
-    
 
         Used to change the :py:class:`BaseOAuthClient` used by the view. See
         :py:meth:`OAuthRedirect.get_client` for more details.
 
-    .. versionadded:: 0.5
+    .. versionadded:: 0.8
+    .. attribute:: params
+
+        Used to pass additional parameters to the authorization redirect (i.e. ``scope`` requests).
+        See :py:meth:`OAuthRedirect.get_additional_parameters` for more details.
+
     .. method:: get_client(provider)
-        
+
         Here you can override the OAuth client class which is used to generate the
         redirect URL. Another use case is to disable the enforcement of the OAuth 2.0
         ``state`` parameter for providers which don't support it. If you are using
@@ -71,18 +74,28 @@ OAuthCallback View
 After the user has authenticated with the remote provider or denied access to your application
 request, they are returned to the callback specifed in the initial redirect. :py:class:`OAuthCallback`
 defines the default behaviour on this callback. This view extends from the base
-`View <https://docs.djangoproject.com/en/1.4/ref/class-based-views/#view>`_ class.
+`View <https://docs.djangoproject.com/en/1.8/ref/class-based-views/#view>`_ class.
 By default it is mapped to the ``allaccess-callback`` URL name. Similar to the :py:class:`OAuthRedirect` view,
 this view takes one keyword argument ``provider`` which corresponds to the ``Provider.name`` 
 for an enabled provider. If no enabled provider is found for the name, this view will return a 404.
 
 .. class:: OAuthCallback()
 
-    .. versionadded:: 0.5
     .. attribute:: client_class
 
         Used to change the :py:class:`BaseOAuthClient` used by the view. See
         :py:meth:`OAuthCallback.get_client` for more details.
+
+    .. versionadded:: 0.8
+    .. attribute:: provider_id
+
+        Used to customize how the user identifier is found from the user profile response from
+        the provider. If the provider response includes a nested response then this value
+        can include a dotted path to the id value.
+
+        For example if the response is `{'result': {'user': {'id': 'XXX'}}}` then you can
+        set this attribute to `result.user.id` to access the value.
+        See :py:meth:`OAuthCallback.get_user_id` for more details.
 
     .. method:: get_callback_url(provider)
 
@@ -91,19 +104,18 @@ for an enabled provider. If no enabled provider is found for the name, this view
         and this view will return ``None``. You will most likely not need to change this
         in your project.
 
-    .. versionadded:: 0.5
     .. method:: get_client(provider)
-        
+
         Here you can override the OAuth client class which is used to fetch the access
         token and user information. Another use case is to disable the enforcement of
-        the OAuth 2.0 ``state`` parameter for providers which don't support it. If you 
+        the OAuth 2.0 ``state`` parameter for providers which don't support it. If you
         are using the view for a single provider, it would be easiest to set the
         :py:attr:`OAuthCallback.client_class` attribute on the class instead.
 
         You should be sure to use the same client class for the redirect view as well.
 
     .. method:: get_error_redirect(provider, reason)
-        
+
         Returns the URL to send the user in the case of an authentication failure. The
         ``reason`` is a brief text description of the problem. By default this will return
         the user to the original login URL as defined by the ``LOGIN_URL`` setting.
@@ -125,7 +137,7 @@ for an enabled provider. If no enabled provider is found for the name, this view
         does not need to be handled here.
 
         :note:
-        
+
             If you are using Django 1.5 support for a custom User model, you
             should override this method to ensure the user is created correctly.
 
@@ -137,6 +149,9 @@ for an enabled provider. If no enabled provider is found for the name, this view
         JSON, it will be the plain text response. By default this looks for a key
         ``id`` in the JSON dictionary. This will work for a number of providers, but
         will need to be changed to fit more complex response structures.
+
+        You can customize how this lookup is done by setting the :py:attr:`OAuthCallback.provider_id`.
+        This can be done either in the class definition or when calling `.as_view`.
 
     .. method:: handle_existing_user(provider, user, access, info)
 
@@ -153,7 +168,7 @@ for an enabled provider. If no enabled provider is found for the name, this view
         In the case of a failure to fetch the user's access token or remote profile information
         or determine their id from that info, this method will be called. It attachs a
         brief error message to the request via ``contrib.messages`` and redirects the
-        user to the result of the :py:meth:`OAuthCallback.get_error_redirect` method. You should override 
+        user to the result of the :py:meth:`OAuthCallback.get_error_redirect` method. You should override
         this function to add any additional logging or handling.
 
     .. method:: handle_new_user(provider, access, info)
@@ -161,15 +176,42 @@ for an enabled provider. If no enabled provider is found for the name, this view
         If the user could not be matched to an existing ``AccountAccess`` record for
         this provider or that record did not contain a user, this method will be called.
         At this point the ``access`` record has already been saved but is not tied to
-        a user. This will call :py:meth:`OAuthCallback.get_or_create_user` to construct a new user record. 
-        The user is then logged in and redirected to the result of the 
-        :py:meth:`OAuthCallback.get_login_redirect` call with ``new=True``.
+        a user. This will call :py:meth:`OAuthCallback.get_or_create_user` to construct a new user record.
+        The user is then logged in and redirected to the result of the
+        :py:meth:`OAuthCallback.get_login_redirect` call with ``new=True``
 
         You may want to override this user to complete more of their infomation or
         attempt to match them to an existing user by either their username or email.
-        You may want to override this to redirect them without creating a new user 
-        in order to have them complete another registration form 
+        You may want to override this to redirect them without creating a new user
+        in order to have them complete another registration form
         (i.e. pick a username or provide an email if not returned by the provider).
+
+
+Customization in URLs
+----------------------------------
+
+For some minor customizations to the redirects and callbacks, it's possible to
+handle that in the URL inclusion rather than by creating a subclass of the view.
+The most common customizations are adding additional scope on the redirect
+and changing how the provider identifier is found on the callback. Below is an example
+``urls.py`` which handles both of these cases.
+
+.. code-block:: python
+
+    from django.conf.urls import include, url
+
+    from allaccess.views import OAuthRedirect, OAuthCallback
+
+    urlpatterns = [
+        # Customize Facebook redirect to request additional scope
+        url(r'^accounts/login/(?P<provider>facebook)/$',
+            OAuthRedirect.as_view(params={'scope': 'email'})),
+        # Customize Foursqaure callback to handle nested response
+        url(r'^accounts/callback/(?P<provider>foursquare)/$',
+            OAuthCallback.as_view(provider_id='response.user.id')),
+        # All other provider cases are handled by the defaults
+        url(r'^accounts/', include('allaccess.urls')),
+    ]
 
 
 Additional Scope Example
@@ -234,7 +276,7 @@ an error.
 
 This view will require authentication which is handled in the URL pattern. There
 are multiple methods for decorating class based views which are detailed in the
-`Django docs <https://docs.djangoproject.com/en/1.4/topics/class-based-views/#decorating-class-based-views>`_.
+`Django docs <https://docs.djangoproject.com/en/1.8/topics/class-based-views/#decorating-class-based-views>`_.
 
 Next we will need a redirect view to send the user to this callback. This view
 will also require that the user already be authenticated which can be handled in
@@ -259,10 +301,10 @@ example set of URL patterns is given below.
 
     from .views import AssociateRedirect, AssociateCallback
 
-    urlpatterns = patterns('',
+    urlpatterns = [
         url(r'^associate/(?P<provider>(\w|-)+)/$', login_required(AssociateRedirect.as_view()), name='associate'),
         url(r'^associate-callback/(?P<provider>(\w|-)+)/$', login_required(AssociateCallback.as_view()), name='associate-callback'),
-    )
+    ]
 
 That is the basic outline of how you would allow multiple account associations. This
 could be further customized using the hooks described earlier.

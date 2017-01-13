@@ -11,6 +11,9 @@ views with sane defaults along with hooks to override the default behavior.
 .. image:: https://travis-ci.org/mlavin/django-all-access.svg?branch=master
     :target: https://travis-ci.org/mlavin/django-all-access
 
+.. image:: https://codecov.io/github/mlavin/django-all-access/coverage.svg?branch=master
+    :target: https://codecov.io/github/mlavin/django-all-access?branch=master
+
 You can find a basic demo application running at http://django-all-access.mlavin.org/
 
 Features
@@ -35,14 +38,14 @@ It is easiest to install django-all-access from PyPi using pip::
 
     pip install django-all-access
 
-django-all-access requires Python 2.7 or 3.2+ along with the following Python
+django-all-access requires Python 2.7 or 3.3+ along with the following Python
 packages::
 
-    django>=1.4.2
+    django>=1.8
     pycrypto>=2.4
-    requests>=1.0
-    requests_oauthlib>=0.3
-    oauthlib>=0.3.4
+    requests>=2.0
+    requests_oauthlib>=0.4.2
+    oauthlib>=0.6.2
 
 
 Documentation

@@ -6,17 +6,20 @@ import logging
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import authenticate, login
+
+from django.contrib.auth import authenticate, login, get_user_model
+
 from django.contrib.sites.shortcuts import get_current_site
 from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.http import Http404
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import redirect
 from django.views.generic import RedirectView, View
 
 from .clients import get_client
-from .compat import force_text, get_user_model, smart_bytes
+from .compat import force_text, smart_bytes
 from .models import AccountAccess, Provider
+
 
 logger = logging.getLogger('allaccess.views')
 
@@ -39,10 +42,11 @@ class OAuthRedirect(OAuthClientMixin, RedirectView):
     "Redirect user to OAuth provider to enable access."
 
     permanent = False
+    params = None
 
     def get_additional_parameters(self, provider):
         "Return additional redirect parameters for this provider."
-        return {}
+        return self.params or {}
 
     def get_callback_url(self, provider):
         "Return the callback url for this provider."
@@ -71,6 +75,8 @@ class OAuthRedirect(OAuthClientMixin, RedirectView):
 class OAuthCallback(OAuthClientMixin, View):
 
     "Base OAuth callback view."
+
+    provider_id = None
 
     def get(self, request, *args, **kwargs):
         name = kwargs.get('provider', '')
@@ -141,9 +147,14 @@ class OAuthCallback(OAuthClientMixin, View):
 
     def get_user_id(self, provider, info):
         "Return unique identifier from the profile info."
-        if hasattr(info, 'get'):
-            return info.get('id')
-        return None
+        id_key = self.provider_id or 'id'
+        result = info
+        try:
+            for key in id_key.split('.'):
+                result = result[key]
+            return result
+        except KeyError:
+            return None
 
     def handle_existing_user(self, provider, user, access, info):
         "Login user and redirect."

@@ -1,24 +1,30 @@
+sudo: false
+
 language: python
 
 python:
-  - "2.7"
+  - "3.5"
 
 env:
-  - TOXENV=py27-1.4.X
-  - TOXENV=py27-1.5.X,py32-1.5.X
-  - TOXENV=py27-1.5.X-swapped,py32-1.5.X-swapped
-  - TOXENV=py27-1.6.X,py32-1.6.X
-  - TOXENV=py27-1.6.X-swapped,py32-1.6.X-swapped
-  - TOXENV=py27-1.7.X,py32-1.7.X
-  - TOXENV=py27-1.7.X-swapped,py32-1.7.X-swapped
-  - TOXENV=py27-1.8.X,py32-1.8.X
-  - TOXENV=py27-1.8.X-swapped,py32-1.8.X-swapped
+  - TOXENV=py27-django18-normal,py33-django18-normal
+  - TOXENV=py27-django18-custom,py33-django18-custom
+  - TOXENV=py27-django19-normal,py34-django19-normal
+  - TOXENV=py27-django19-custom,py34-django19-custom
+  - TOXENV=py27-django110-normal,py34-django110-normal,py35-django110-normal
+  - TOXENV=py27-django110-custom,py34-django110-custom,py35-django110-custom
+
+cache:
+  directories:
+    - $HOME/.cache/pip
 
 install:
-  - pip install tox
+  - pip install tox pip wheel codecov -U
 
 script:
-    - tox
+  - tox
+
+after_success:
+  - codecov -e TOX_ENV
 
 branches:
   only:

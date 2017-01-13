@@ -4,6 +4,43 @@ Release History
 Release and change history for django-all-access
 
 
+v0.9.0 (2016-11-12)
+-----------------------------------
+
+Encrypted fields for storing the provider configurations and access tokens
+now sign the values after encryption to dectect if the key is valid before
+attempting to decrypt. This was added thanks to Florian Demmer (@fdemmer).
+
+Other small changes include:
+
+- Added Django 1.10 and Python 3.5 to the test suite coverage.
+- Updated documentation on Facebook version numbers.
+- Update provider fixtures to include the latest version number for Facebook.
+
+
+v0.8.0 (2016-01-23)
+-----------------------------------
+
+Minor clean up release which drops support for outdated versions of Django. As
+such it also removes the old South migrations and the commands related to
+django-social-auth.
+
+- Added support for additional parameters in the redirect view.
+- Added support for more complex id lookups in the callback view.
+- Additional documentation examples for customizing the views.
+- Added support for Django 1.9.
+- Tracking code coverage reports with Codecov.io.
+
+
+Backwards Incompatible Changes
+__________________________________
+
+- Python 3.2 is no longer officially supported or tested.
+- Django < 1.8 is no longer officially supported or tested.
+- requests_oauthlib < 0.4.2 is no longer officially supported.
+- ``migrate_social_accounts`` and ``migrate_social_accounts`` commands have been removed.
+
+
 v0.7.2 (2015-05-13)
 ------------------------------------
 
@@ -43,7 +80,7 @@ should automatically fake the initial migration using the new-style migrations.
 Backwards Incompatible Changes
 __________________________________
 
-- Python 2.6 is no officially supported or tested.
+- Python 2.6 is no longer officially supported or tested.
 
 
 v0.6.0 (2014-02-01)
