@@ -23,12 +23,11 @@ Features
 - Easy customization through class-based views
 - Built on the amazing `requests <http://docs.python-requests.org/>`_ library
 
-Why this branche
+Why this branch
 ===================
-This code is a branch from https://github.com/mlavin/django-all-access
-this branch add the ability for a provider to be linked to a Site.
-Is you use many sites on Django and you want to use Facebook provider, you will need this branche. 
-Facebook authorize only one url and domain, if you use many domain you will need to create one facebook apps per domaine (AKA per site) and attach you facebook provider to the right site with the right credentials. 
+This code is a fork from https://github.com/mlavin/django-all-access, it adds the ability for a provider to be linked to a Site.
+Is you use many sites on Django and you want to use Facebook provider, you will need this fork. 
+Facebook authorizes only one url and domain, if you use many domains you will need to create one facebook apps per domain (AKA per site) and attach you facebook provider to the right site with the right credentials. 
 
 
 Installation
@@ -41,7 +40,7 @@ It is easiest to install django-all-access from PyPi using pip::
 django-all-access requires Python 2.7 or 3.3+ along with the following Python
 packages::
 
-    django>=1.8
+    django>=1.10
     pycrypto>=2.4
     requests>=2.0
     requests_oauthlib>=0.4.2
